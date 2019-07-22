@@ -37,6 +37,7 @@ int panda_init(int argc, char **argv, char **envp) {
     return main_aux(argc, argv, envp, PANDA_INIT);
 }
 
+extern void pandalog_cc_init_write(const char * fname);
 extern int panda_in_main_loop;
 extern bool panda_exit_loop;
 extern bool panda_stopped;
@@ -68,6 +69,12 @@ int panda_finish(void) {
 void panda_exit_emul_loop(void) {
 //    printf ("panda_api: exit_emul_loop\n");
     panda_exit_loop = true;
+}
+
+void panda_start_pandalog(const char * name) {
+    pandalog = 1;
+    pandalog_cc_init_write(name);
+    printf ("pandalogging to [%s]\n", name);
 }
 
 int do_vm_stop(int state);
@@ -158,7 +165,6 @@ int panda_replay(char *replay_name) {
     rr_replay_requested = 1;
     rr_requested_name = strdup(replay_name);
     return 0;
-//    return panda_run();
 }
 
 int rr_get_guest_instr_count_external(void){

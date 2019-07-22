@@ -73,6 +73,9 @@ volatile sig_atomic_t rr_skipped_callsite_location = 0;
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
 
+// Defined in vl.c
+extern void panda_break_main_loop(void);
+
 bool rr_replay_complete = false;
 
 #define RR_RECORD_FROM_REQUEST 2
@@ -92,6 +95,7 @@ inline double rr_get_percentage(void) {
 static inline uint8_t rr_log_is_empty(void) {
     if ((rr_nondet_log->type == REPLAY) &&
         (rr_nondet_log->size == rr_nondet_log->bytes_read)) {
+      //printf("Empty: size=0x%llu, read=0x%lu\n", rr_nondet_log->size, rr_nondet_log->bytes_read);
         return 1;
     } else {
         return 0;
@@ -125,10 +129,25 @@ RR_log_entry* rr_get_queue_head(void) { return rr_queue_head; }
 // 2) The only thing in the queue is RR_END_OF_LOG
 uint8_t rr_replay_finished(void)
 {
+    if (rr_log_is_empty()) { // Mostly false because of instr_count
+        if(rr_queue_head->header.kind == RR_END_OF_LOG
+            && rr_get_guest_instr_count() >=
+               rr_queue_head->header.prog_point.guest_instr_count) {
+          printf("REPLAY FINISHED\n");
+          return true;
+        }else{
+          /*printf("Log empty but queue head %d / instr cnt %d\n", rr_queue_head->header.kind == RR_END_OF_LOG,
+             rr_get_guest_instr_count() >= rr_queue_head->header.prog_point.guest_instr_count);*/
+          return false;
+        }
+    }
+    return false;
+    /*
     return rr_log_is_empty()
         && rr_queue_head->header.kind == RR_END_OF_LOG
         && rr_get_guest_instr_count() >=
                rr_queue_head->header.prog_point.guest_instr_count;
+               */
 }
 
 // mz "performance" counters - basically, how much of the log is taken up by
@@ -861,6 +880,7 @@ void rr_fill_queue(void) {
     if (num_entries > rr_max_num_queue_entries) {
         rr_max_num_queue_entries = num_entries;
     }
+    //printf("Filled queue with %llu entries\n", num_entries);
 }
 
 // Makes sure queue is full and returns fron entry.
@@ -885,7 +905,12 @@ static inline RR_log_entry* get_next_entry_checked(RR_log_entry_kind kind,
     RR_log_entry *entry = get_next_entry();
     if (!entry) return NULL;
 
+
     RR_header header = entry->header;
+
+    printf("RR instrc: %lu\n", header.prog_point.guest_instr_count);
+
+
     // XXX FIXME this is a temporary hack to get around the fact that we
     // cannot currently do a tb_flush and a savevm in the same instant.
     if (header.prog_point.guest_instr_count == 0) {
@@ -1186,13 +1211,17 @@ void rr_create_replay_log(const char* filename)
     stat(rr_nondet_log->name, &statbuf);
     rr_nondet_log->size = statbuf.st_size;
     rr_nondet_log->bytes_read = 0;
-    if (rr_debug_whisper()) {
+    if (true || rr_debug_whisper()) { // XXX
         qemu_log("opened %s for read.  len=%llu bytes.\n", rr_nondet_log->name,
                  rr_nondet_log->size);
     }
     // mz read the last program point from the log header.
     rr_fread(&(rr_nondet_log->last_prog_point.guest_instr_count),
             sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
+
+    printf("After read: guest instr count=0x%lx. Size = %llu, bytes_read=%lu\n", rr_nondet_log->last_prog_point.guest_instr_count,
+      rr_nondet_log->size,
+      rr_nondet_log->bytes_read);
 }
 
 // close file and free associated memory
@@ -1222,6 +1251,7 @@ void replay_progress(void)
     if (rr_nondet_log) {
         if (rr_log_is_empty()) {
             printf("%s:  log is empty.\n", rr_nondet_log->name);
+            printf("\tsize=0x%llu, read=0x%lu\n", rr_nondet_log->size, rr_nondet_log->bytes_read);
         } else {
             struct rusage rusage;
             getrusage(RUSAGE_SELF, &rusage);
@@ -1472,19 +1502,25 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 {
 #ifdef CONFIG_SOFTMMU
     char name_buf[1024];
+    rr_replay_complete = false;
     // decompose file_name_base into path & file.
     char* rr_path = g_strdup(file_name_full);
     char* rr_name = g_strdup(file_name_full);
     __attribute__((unused)) int snapshot_ret;
     rr_path = dirname(rr_path);
     rr_name = basename(rr_name);
-    if (rr_debug_whisper()) {
+
+    // When we start a replay, re-initialize all state
+    // so we can do this multiple times
+    rr_next_progress = 1;
+
+    if (rr_debug_whisper()) { // XXX
         qemu_log("Begin vm replay for file_name_full = %s\n", file_name_full);
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
     }
     // first retrieve snapshot
     rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    if (rr_debug_whisper()) {
+    if (rr_debug_whisper()) { // XXX
         qemu_log("reading snapshot:\t%s\n", name_buf);
     }
     printf("loading snapshot\n");
@@ -1508,7 +1544,6 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
         return snapshot_ret;
     }
     printf("... done.\n");
-    // log_all_cpu_states();
 
     // save the time so we can report how long replay takes
     time(&rr_start_time);
@@ -1526,6 +1561,9 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     rr_queue_head = rr_queue_tail = NULL;
     rr_queue_end = &rr_queue[RR_QUEUE_MAX_LEN];
     rr_fill_queue();
+
+    printf("START with instr_cnt %lu guest insn: %lu\n", rr_get_guest_instr_count(), rr_nondet_log->last_prog_point.guest_instr_count);
+
     return 0; // snapshot_ret;
 #endif
 }
@@ -1582,16 +1620,20 @@ void rr_do_end_replay(int is_error)
     // close logs
     rr_destroy_log();
     // turn off replay
-    rr_mode = RR_OFF;
+    //rr_mode = RR_OFF;
 
     rr_replay_complete = true;
     
     // mz XXX something more graceful?
+    panda_cleanup();
     if (is_error) {
-        panda_cleanup();
         abort();
     } else {
-        qemu_system_shutdown_request();
+        // XXX add callback here - finished_recording. Then don't request shutdown
+        printf("XXX NOT ACTUALLY SHUTTING DOWN\n\tRESET QEMU STATE and BREAK MAIN LOOP\n");
+        qemu_system_reset(VMRESET_SILENT);
+        panda_break_main_loop();
+        //qemu_system_shutdown_request();
     }
 #endif // CONFIG_SOFTMMU
 }

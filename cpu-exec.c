@@ -849,7 +849,8 @@ int cpu_exec(CPUState *cpu)
             if (rr_mode == RR_REPLAY && rr_replay_finished()) {
                 rr_do_end_replay(0);
                 qemu_cpu_kick(cpu);
-                panda_exit_loop = true;
+                //panda_exit_loop = true;
+                printf("XXX: not requesitng panda_exit loop\n");
                 break;
             }
 

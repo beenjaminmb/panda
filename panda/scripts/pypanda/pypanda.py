@@ -23,11 +23,12 @@ from panda_expect import Expect
 from asyncthread import AsyncThread
 
 import qcows
+from plog import PLogReader
 
 import pdb
 
 debug = True
-pandas = []
+panda = None
 
 def progress(msg):
 	print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
@@ -104,13 +105,24 @@ def main_loop_wait_cb():
 	main_loop_wait_cbargs = []
 
 
-@pcb.pre_shutdown
+@pcb.pre_shutdown # XXX Put this in the class?
 def pre_shutdown_cb():
-	print("QEmu has requested to shut down. Gracefully stopping...")
-	global pandas
-	for p in pandas:
-		p.shutdown()
+	print("Qemu has requested to shut down. Unloading all plugins & writing pandalog")
+	global panda
+	if panda is not None:
 
+		# Cleanup and then clear mutexes. XXX maybe the mutexes are pointless?
+		panda.cleanup()
+		panda.running.clear()
+		panda.started.clear()
+
+		#panda.finish()
+		#print("Panda finished")
+		#panda.shutdown()
+		#print("Panda shutdown")
+	return True # Abort shutdown
+
+initialized=False
 class Panda:
 
 	"""
@@ -120,6 +132,11 @@ class Panda:
 	def __init__(self, arch="i386", mem="128M",
 			expect_prompt = None, os_version="debian:3.2.0-4-686-pae",
 			qcow="default", extra_args = "", os="linux", generic=None):
+
+		global initialized
+		assert(initialized == False), "Error: cannot maintain two seperate handles into panda due to CFFI limitations"
+		initialized=True
+
 		self.arch = arch
 		self.mem = mem
 		self.os = os_version
@@ -156,8 +173,13 @@ class Panda:
 		self.callback = pcb
 		self.bindir = pjoin(panda_build, "%s-softmmu" % self.arch)
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % self.arch)
+		if hasattr(self, 'libpanda'):
+			print("WARNING already have a libpanda at init")
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
 		
+		if self.os:
+			self.set_os_name(self.os)
+
 		biospath = realpath(pjoin(self.panda,"..", "..",  "pc-bios"))
 		bits = None
 		if self.arch == "i386":
@@ -202,8 +224,6 @@ class Panda:
 		self.running = threading.Event()
 		self.started = threading.Event()
 		self.athread = AsyncThread(self.started)
-		global pandas
-		pandas.append(self)
 
 		self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
 		cargs = ffi.new("char **")
@@ -221,6 +241,14 @@ class Panda:
 		self.taint_enabled = False
 		self.init_run = False
 		self.pcb_list = {}
+
+	def _reload_libpanda(self):
+		# Reopen the libpanda dll after it closed (e.g. from monitor quit)
+		# XXX: Make this interface more clean
+		raise NotImplemented("Panda has already exited. Can't cleanly restart library.")
+		# XXX: Cffi won't let us reopen a new libpanda to do the replay. We should fix this someday
+		#self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
+		self.running.clear()
 
 	def shutdown(self): # Cleanup panda object. XXX can't then re-initialize new python
 		del self.libpanda
@@ -246,6 +274,10 @@ class Panda:
 				ffi.cast("void *", 0xdeadbeef), # XXX: junk argument
 				self.callback.main_loop_wait, main_loop_wait_cb)
 
+
+		# Register callback to cleanup when qemu shuts down
+		global panda
+		panda = self
 		self.register_callback(
 				ffi.cast("void *", 0xdeeeeeef), # XXX: junk argument
 				self.callback.pre_shutdown, pre_shutdown_cb)
@@ -327,43 +359,99 @@ class Panda:
 		if not self.init_run:
 			self.init()
 
+		if not hasattr(self, "libpanda"): # Initialize libpanda as necessary
+			print("Reloading libpanda handle")
+			self._reload_libpanda()
+
+		self.running.clear() # XXX INSANITY
 		assert not self.running.is_set()
 		self.running.set()
 
+		self.started.clear() # XXX INSANITY
 		assert not self.started.is_set()
 		self.started.set()
 
 		self.libpanda.panda_run()
 
+	def stop_run(self): # From a blocking thread, tell main thread to break. Returns control flow in main thread
+		self.libpanda.panda_break_main_loop()
+
 	def stop(self):
 		if debug:
 		    progress ("Stopping guest")
-		if self.init_run:
-			self.running.clear()
-			self.libpanda.panda_stop()
-		else:
-		    raise RuntimeError("Guest not running- can't be stopped")
+		self.running.clear()
+		self.started.clear()
+
+		if hasattr(self, "libpanda"): # We still have a handle to the library. Call stop on it?
+			if self.init_run:
+				self.libpanda.panda_stop()
+			else:
+				raise RuntimeError("Guest not running- can't be stopped")
+
+	def finish(self):
+		if debug:
+		    progress ("Finishing qemu execution")
+		self.running.clear()
+		self.started.clear()
+		self.libpanda.panda_finish()
+
+	def set_pandalog(self, name):
+		charptr = ffi.new("char[]", bytes(name, "utf-8"))
+		self.libpanda.panda_start_pandalog(charptr)
+
+
+	def init_replay(self, replay_name):
+		self.init_run = True
+
+		self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args+["-replay {}".format(replay_name)]]
+		self.len_cargs = ffi.cast("int", len(self.panda_args_ffi))
+
+		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 
 	def begin_replay(self, replaypfx):
 		if debug:
 			progress ("Replaying %s" % replaypfx)
+
+		if not hasattr(self, "libpanda"): # Initialize libpanda as necessary
+			print("Reloading libpanda handle")
+			self._reload_libpanda()
+
 		charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
 		self.libpanda.panda_replay(charptr)
 
-	def load_plugin(self, name, args=[]): # TODO: this doesn't work yet
+	def reset_panda(self):
+		self.libpanda.qemu_system_reset(0);
+
+
+	def load_plugin(self, name, args={}):
 		if debug:
 			progress ("Loading plugin %s" % name),
 #			print("plugin args: [" + (" ".join(args)) + "]")
-		n = len(args)
-		cargs = []
-		assert(len(args)==0), "TODO: support arguments"
+
+		argstrs_ffi = []
+		if isinstance(args, dict):
+			for k,v in args.items():
+				this_arg_s = "{}={}".format(k,v)
+				this_arg = ffi.new("char[]", bytes(this_arg_s, "utf-8"))
+				argstrs_ffi.append(this_arg)
+
+			n = len(args.keys())
+		elif isinstance(args, list):
+			for arg in args:
+				this_arg = ffi.new("char[]", bytes(arg, "utf-8"))
+				argstrs_ffi.append(this_arg)
+			n = len(args)
+
+		else:
+			raise ValueError("Arguments to load plugin must be a list or dict of key/value pairs")
+
 
 		# First set qemu_path so plugins can load (may be unnecessary after the first time)
 		panda_name_ffi = ffi.new("char[]", bytes(self.panda,"utf-8"))
 		self.libpanda.panda_set_qemu_path(panda_name_ffi)
 
 		name_ffi = ffi.new("char[]", bytes(name,"utf-8"))
-		self.libpanda.panda_init_plugin(name_ffi, cargs, n)
+		self.libpanda.panda_init_plugin(name_ffi, argstrs_ffi, n)
 		self.load_plugin_library(name)
 
 	def load_python_plugin(self, init_function, name):
@@ -742,7 +830,7 @@ class Panda:
 			#   prep guest environment before script runs)
 		
 			# TODO XXX: guest filesystem is read only so this could hang forever if it can't mount. Instead change the command to run out of /mnt/.
-			guest_cmd = guest_cmd.replace(copy_directory, "/mnt/")
+			guest_command = guest_command.replace(copy_directory, "/mnt/")
 			copy_directory="/mnt/" # for now just mount to an existing directory
 
 			# XXX: fix this copy directory hack

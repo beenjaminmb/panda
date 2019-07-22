@@ -868,11 +868,14 @@ int panda_init(int argc, char **argv, char **envp);
 int panda_run(void);
 void panda_stop(void);
 void panda_cont(void);
+void panda_start_pandalog(const char *name);
 int panda_revert(char *snapshot_name);
 int panda_snap(char *snapshot_name);
 int panda_replay(char *replay_name);
 int panda_finish(void);
 
+// Defined in vl.c
+void panda_break_main_loop(void);
 
 void panda_set_qemu_path(char* filepath);
 

@@ -73,8 +73,8 @@ def on_init(_handle):
 panda.load_python_plugin(on_init, "record_cmd_multiple")
 
 # Queue up a sequence of commands to run outside the CPU loop
-#panda.queue_async(record_jq) # Has paths specific to my host - AF
-panda.queue_async(record_ls)
+panda.queue_async(record_jq) # Has paths specific to my host - AF
+#panda.queue_async(record_ls)
 panda.queue_async(record_whoami)
 
 panda.run()

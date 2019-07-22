@@ -269,6 +269,8 @@ static int default_sdcard = 1;
 static int default_vga = 1;
 static int default_net = 1;
 
+int panda_pause_requested = 0;
+
 static struct {
     const char *driver;
     int *flag;
@@ -1893,6 +1895,11 @@ void qemu_system_debug_request(void)
     qemu_notify_event();
 }
 
+void panda_break_main_loop(void);
+void panda_break_main_loop(void) {
+  panda_pause_requested = 1;
+}
+
 static bool main_loop_should_exit(void)
 {
     RunState r;
@@ -1902,6 +1909,13 @@ static bool main_loop_should_exit(void)
     if (qemu_suspend_requested()) {
         qemu_system_suspend();
     }
+
+    if (panda_pause_requested) {
+      panda_pause_requested = 0; // Reset after we break the main loop once
+      return true;
+    }
+
+
     if (qemu_shutdown_requested()) {
         panda_callbacks_pre_shutdown();
         qemu_kill_report();
@@ -1993,6 +2007,7 @@ void main_loop(void)
                 printf("Failed to start replay\n");
                 exit(1);
             } else { // we have to unblock signals, so we can't just continue on failure
+              printf("STARTED REPLAY\n");
                 qemu_rr_quit_timers();
                 rr_replay_requested = 0;
             }
@@ -2002,12 +2017,14 @@ void main_loop(void)
 
         //mz 05.2012 We have the global mutex here, so this should be OK.
         if (rr_end_record_requested && rr_in_record()) {
+              printf("END RECORD 1\n");
             rr_do_end_record();
             rr_reset_state(first_cpu);
             rr_end_record_requested = 0;
             vm_start();
         }
         if (rr_end_replay_requested && rr_in_replay()) {
+              printf("END RECORD 2\n");
             //mz restore timers
             qemu_clock_run_all_timers();
             //mz FIXME this is used in the monitor for do_stop()??

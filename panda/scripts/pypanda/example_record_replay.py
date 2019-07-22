@@ -27,6 +27,6 @@ def asid_changed(cpustate,old_asid, new_asid):
 		progress("asid changed from %d to %d" %(old_asid, new_asid))
 	return 0
 
-panda.load_python_plugin(init,"example_record_replay")
+panda.load_python_plugin(init, "example_record_replay")
 panda.begin_replay(replay_file)
 panda.run()
