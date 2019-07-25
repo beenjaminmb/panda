@@ -538,7 +538,7 @@ class Panda:
 			cb = callback_dictionary[callback]
 			progress("disabled callback %s" % cb.name)
 			self.libpanda.panda_disable_callback_helper(handle, cb.number, pcb)
-			# XXX: Can't just renable here, might have been disabled for multiple
+			# XXX: Can't just renable here, might have been disabled for multiple reasons
 			#if "block" in cb.name:
 			#	self.enable_tb_chaining()
 		else:
@@ -558,7 +558,6 @@ class Panda:
 		# First unload python plugins
 		for cb in self.pcb_list:
 			if len(self.pcb_list[cb]):
-				print("Have a CB to disable", cb, self.pcb_list[cb])
 				self.disable_callback(cb)
 
 		# Then unload C plugins
