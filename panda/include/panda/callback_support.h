@@ -34,7 +34,7 @@ void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid);
 // vl.c
 void panda_callbacks_after_machine_init(void);
-void qemu_system_reset(void);
+//void qemu_system_reset(bool); // XXX can't put this here (duplicated when compiling) but we need it in one of these files to get the sig into python
 
 void panda_callbacks_during_machine_init(MachineState *machine);
 

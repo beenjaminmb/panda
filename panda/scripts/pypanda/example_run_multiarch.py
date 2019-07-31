@@ -17,6 +17,8 @@ def run_cmd():
 def quit():
     panda.run_monitor_cmd("quit")
 
+# XXX: This can only manage multiple instances of panda because they're distinct libraries for each arch.
+# we don't currently have a way to do this for the same arch multiple times
 for arch in ["x86_64", "i386", "arm", "ppc"]:
     progress(f"Starting {arch}")
     panda = Panda(generic=arch)

@@ -43,6 +43,18 @@
 #include <unistd.h>
 #include <glib.h>
 
+// TESTING
+#include <stdio.h>
+static void __attribute__((constructor)) con(void);
+static void __attribute__((destructor)) des(void);
+void con(void) {
+      puts("QEMU CONSTRUCTOR\n");
+}
+
+void des(void) {
+      puts("QEMU DESTRUCTOR\n");
+}
+
 #ifdef CONFIG_SECCOMP
 #include "sysemu/seccomp.h"
 #endif

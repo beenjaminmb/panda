@@ -110,17 +110,10 @@ def pre_shutdown_cb():
 	print("Qemu has requested to shut down. Unloading all plugins & writing pandalog")
 	global panda
 	if panda is not None:
-
 		# Cleanup and then clear mutexes. XXX maybe the mutexes are pointless?
 		panda.cleanup()
 		panda.running.clear()
 		panda.started.clear()
-
-		#panda.finish()
-		#print("Panda finished")
-		#panda.shutdown()
-		#print("Panda shutdown")
-	return True # Abort shutdown
 
 initialized=False
 class Panda:
@@ -242,18 +235,31 @@ class Panda:
 		self.init_run = False
 		self.pcb_list = {}
 
-	def _reload_libpanda(self):
+	def unload(self):
+		print("calling dlclose on {}".format(self.libpanda))
+		ffi.dlclose(self.libpanda)
+		self.running.clear()
+		self.init_run = False
+		self.libpanda = None
+
+	def _reload_libpanda_if_necessary(self):
 		# Reopen the libpanda dll after it closed (e.g. from monitor quit)
 		# XXX: Make this interface more clean
-		raise NotImplemented("Panda has already exited. Can't cleanly restart library.")
+		#raise NotImplemented("Panda has already exited. Can't cleanly restart library.")
 		# XXX: Cffi won't let us reopen a new libpanda to do the replay. We should fix this someday
-		#self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
-		self.running.clear()
+
+		if not hasattr(self, "libpanda") or self.libpanda is None:
+			# Initialize libpanda as necessary
+			print("Reloading libpanda handle")
+
+			self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
+			self.running.clear()
 
 	def shutdown(self): # Cleanup panda object. XXX can't then re-initialize new python
 		del self.libpanda
 
 	def init(self):
+		self._reload_libpanda_if_necessary()
 		self.init_run = True
 		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 
@@ -356,12 +362,9 @@ class Panda:
 	def run(self):
 		if debug:
 			progress ("Running")
+		self._reload_libpanda_if_necessary()
 		if not self.init_run:
 			self.init()
-
-		if not hasattr(self, "libpanda"): # Initialize libpanda as necessary
-			print("Reloading libpanda handle")
-			self._reload_libpanda()
 
 		self.running.clear() # XXX INSANITY
 		assert not self.running.is_set()
