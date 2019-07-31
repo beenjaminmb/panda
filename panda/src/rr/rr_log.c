@@ -907,10 +907,6 @@ static inline RR_log_entry* get_next_entry_checked(RR_log_entry_kind kind,
 
 
     RR_header header = entry->header;
-
-    printf("RR instrc: %lu\n", header.prog_point.guest_instr_count);
-
-
     // XXX FIXME this is a temporary hack to get around the fact that we
     // cannot currently do a tb_flush and a savevm in the same instant.
     if (header.prog_point.guest_instr_count == 0) {
@@ -1211,7 +1207,7 @@ void rr_create_replay_log(const char* filename)
     stat(rr_nondet_log->name, &statbuf);
     rr_nondet_log->size = statbuf.st_size;
     rr_nondet_log->bytes_read = 0;
-    if (true || rr_debug_whisper()) { // XXX
+    if (rr_debug_whisper()) {
         qemu_log("opened %s for read.  len=%llu bytes.\n", rr_nondet_log->name,
                  rr_nondet_log->size);
     }
@@ -1514,13 +1510,13 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     // so we can do this multiple times
     rr_next_progress = 1;
 
-    if (rr_debug_whisper()) { // XXX
+    if (rr_debug_whisper()) {
         qemu_log("Begin vm replay for file_name_full = %s\n", file_name_full);
         qemu_log("path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
     }
     // first retrieve snapshot
     rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
-    if (rr_debug_whisper()) { // XXX
+    if (rr_debug_whisper()) {
         qemu_log("reading snapshot:\t%s\n", name_buf);
     }
     printf("loading snapshot\n");
