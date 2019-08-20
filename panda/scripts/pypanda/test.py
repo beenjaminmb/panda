@@ -40,7 +40,6 @@ for _ in range(5):
 
 print("Now done")
 
-"""
 @blocking
 def runcmd2():
     print("RUNCMD2")
@@ -54,4 +53,3 @@ panda.queue_async(quit)
 print("RUN AGAIN")
 panda.run()
 print("\n\nFINISHED\n")
-"""

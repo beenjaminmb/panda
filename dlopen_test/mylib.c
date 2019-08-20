@@ -1,7 +1,16 @@
 #include <stdio.h>
 
-int foo(int x) {
-  return x + 1;
+static int x = 0;
+int y = 0;
+
+int inc_x(int off) {
+    x+=off;
+    return x;
+}
+
+int inc_y(int off) {
+  y+=off;
+  return y + 1;
 }
 
 static void con() __attribute__((constructor));

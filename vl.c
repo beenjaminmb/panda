@@ -47,11 +47,12 @@
 #include <stdio.h>
 static void __attribute__((constructor)) con(void);
 static void __attribute__((destructor)) des(void);
-void con(void) {
+
+static void __attribute__((constructor)) con(void) {
       puts("QEMU CONSTRUCTOR\n");
 }
 
-void des(void) {
+static void __attribute__((destructor)) des(void) {
       puts("QEMU DESTRUCTOR\n");
 }
 

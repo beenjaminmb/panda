@@ -8,7 +8,7 @@
 			char *error;
 
       puts("Opening...\t");
-			handle = dlopen ("/home/andrew/git/panda/dlopen/mylib.so", RTLD_LAZY);
+			handle = dlopen ("/home/andrew/git/panda/dlopen_test/mylib.so", RTLD_LAZY);
 			if (!handle) {
 					fputs (dlerror(), stderr);
 					exit(1);
