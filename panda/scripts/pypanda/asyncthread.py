@@ -31,6 +31,8 @@ class AsyncThread:
         self.running = False
 
     def queue(self, func): # Queue a function to be run soon. Must be @blocking
+        if not func:
+            raise RuntimeError("Queued up an undefined function")
         if not (hasattr(func, "__blocking__")) or not func.__blocking__:
             raise RuntimeError("Refusing to queue function '{}' without @blocking decorator".format(func.__name__))
         self.task_queue.put_nowait(func)

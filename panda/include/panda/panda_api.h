@@ -29,7 +29,6 @@ void panda_disable_llvm_helpers(void);
 void panda_memsavep(FILE *f);
 
 // from panda_api.c
-int panda_pre(int argc, char **argv, char **envp);
 int panda_init(int argc, char **argv, char **envp);
 int panda_run(void);
 void panda_stop(void);

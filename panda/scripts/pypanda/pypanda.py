@@ -131,7 +131,6 @@ def pre_shutdown_cb():
 		panda.running.clear()
 		panda.started.clear()
 
-initialized=False
 class Panda:
 
 	"""
@@ -141,10 +140,6 @@ class Panda:
 	def __init__(self, arch="i386", mem="128M",
 			expect_prompt = None, os_version="debian:3.2.0-4-686-pae",
 			qcow="default", extra_args = "", os="linux", generic=None):
-
-		global initialized
-		assert(initialized == False), "Error: cannot maintain two seperate handles into panda due to CFFI limitations"
-		initialized=True
 
 		self.arch = arch
 		self.mem = mem
@@ -247,7 +242,7 @@ class Panda:
 
 		self.len_cargs = len_cargs
 		self.cenvp = cenvp
-		self.libpanda.panda_pre(self.len_cargs, self.panda_args_ffi, self.cenvp)
+		#self.libpanda.panda_pre(self.len_cargs, self.panda_args_ffi, self.cenvp)
 		self.taint_enabled = False
 		self.init_run = False
 		self.pcb_list = {}
@@ -436,6 +431,7 @@ class Panda:
 
 		self.libpanda.panda_run()
 
+	@blocking
 	def stop_run(self): # From a blocking thread, tell main thread to break. Returns control flow in main thread
 		self.libpanda.panda_break_main_loop()
 

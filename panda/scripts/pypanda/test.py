@@ -1,55 +1,40 @@
 #!/usr/bin/env python3
-from pypanda import *
-from sys import argv
-import subprocess
-import os
+from pypanda import Panda
+from time import sleep
+import pdb
 
-# Single arg of arch, defaults to i386
-arch = "i386" if len(argv) <= 1 else argv[1]
+arch = "i386"
 
-print("Initialize a panda")
+print("\n\nFIRST TRY")
 panda = Panda(generic=arch, extra_args = "")
-
-# Record, then replay with plugins
-@blocking
-def runcmd():
-    print("RUNCMD")
-    panda.revert_sync("root")
-    print("CMD 1:", panda.run_serial_cmd("uname -a"))
-    panda.stop_run()
-
-@blocking
-def quit():
-    panda.run_monitor_cmd("quit")
-
-print("Start")
-panda.queue_async(runcmd)
-panda.queue_async(quit)
-print("Queued... Starting run")
-panda.run()
-print("Finished run")
-
-print("DO UNLOAD")
+print("Initialize")
+panda.init()
+print("Initialized")
 panda.unload()
+print("Unloaded")
+pdb.set_trace()
 
-import time
-print("Sleeping 5s")
-for _ in range(5):
-    time.sleep(1)
-    print(".", end="")
+print("\n\nSECOND TRY")
+panda2 = Panda(generic=arch, extra_args = "")
+print("Initialize")
+panda2.init()
+print("Initialized")
+panda2.unload()
+print("Unloaded")
 
-print("Now done")
+"""
+print("\nINIT PANDA OBJ")
+with Panda(generic=arch, extra_args = "") as panda:
+    pdb.set_trace()
+    print("Have panda")
+    [print('.') and sleep(1) for _ in range(10)]
 
-@blocking
-def runcmd2():
-    print("RUNCMD2")
-    panda.revert_sync("root")
-    print("CMD 2:", panda.run_serial_cmd("ls /"))
-    panda.stop_run()
+print("\n\n--------------------------\n")
+pdb.set_trace()
 
-print("Queue more")
-panda.queue_async(runcmd2)
-panda.queue_async(quit)
-print("RUN AGAIN")
-panda.run()
-print("\n\nFINISHED\n")
+with Panda(generic=arch, extra_args = "") as panda2:
+    print("SECOND PANDA")
+    [print('.') and sleep(1) for _ in range(10)]
+"""
+
+print("Done")
