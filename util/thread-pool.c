@@ -74,9 +74,20 @@ struct ThreadPool {
     bool stopping;
 };
 
+// We use main_pool so we can free all the threads later. Looks
+// like threads always are in the same threadpool so this works...for now
+ThreadPool *main_pool = {0};
+
+void panda_stop_all_threads(void) { // call thread_pool_free on main pool if it exists
+  if (main_pool != NULL)
+    thread_pool_free(main_pool);
+}
+
 static void *worker_thread(void *opaque)
 {
     ThreadPool *pool = opaque;
+    if (main_pool != NULL) assert(pool == main_pool);
+    main_pool = pool;
 
     qemu_mutex_lock(&pool->lock);
     pool->pending_threads--;
@@ -122,6 +133,8 @@ static void *worker_thread(void *opaque)
 
 static void do_spawn_thread(ThreadPool *pool)
 {
+    if (main_pool != NULL) assert(pool == main_pool);
+    main_pool = pool;
     QemuThread t;
 
     /* Runs with lock taken.  */
@@ -138,6 +151,8 @@ static void do_spawn_thread(ThreadPool *pool)
 static void spawn_thread_bh_fn(void *opaque)
 {
     ThreadPool *pool = opaque;
+    if (main_pool != NULL) assert(pool == main_pool);
+    main_pool = pool;
 
     qemu_mutex_lock(&pool->lock);
     do_spawn_thread(pool);
@@ -146,6 +161,9 @@ static void spawn_thread_bh_fn(void *opaque)
 
 static void spawn_thread(ThreadPool *pool)
 {
+    if (main_pool != NULL) assert(pool == main_pool);
+    main_pool = pool;
+
     pool->cur_threads++;
     pool->new_threads++;
     /* If there are threads being created, they will spawn new workers, so
@@ -164,6 +182,8 @@ static void thread_pool_completion_bh(void *opaque)
 {
     ThreadPool *pool = opaque;
     ThreadPoolElement *elem, *next;
+    if (main_pool != NULL) assert(pool == main_pool);
+    main_pool = pool;
 
     aio_context_acquire(pool->ctx);
 restart:
@@ -333,6 +353,7 @@ void thread_pool_free(ThreadPool *pool)
     /* Wait for worker threads to terminate */
     pool->stopping = true;
     while (pool->cur_threads > 0) {
+        //printf("Killing %d thread(s) in main threadpool\n", pool->cur_threads);
         qemu_sem_post(&pool->sem);
         qemu_cond_wait(&pool->worker_stopped, &pool->lock);
     }

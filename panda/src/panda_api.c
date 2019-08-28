@@ -25,15 +25,10 @@ bool panda_in_kernel_external(CPUState *cpu);
 */
 int save_vmstate_nomon(const char *name);
 
-
-// just call main_aux and return IMMEDIATELY
-// after this we will be able to register plugins in python
-int panda_pre(int argc, char **argv, char **envp) {
-    return main_aux(argc, argv, envp, PANDA_PRE);
-}
-
+int init_count = 0;
 // call main_aux and run everything up to and including panda_callbacks_after_machine_init
 int panda_init(int argc, char **argv, char **envp) {
+    assert(init_count++ == 0); // Can't initialize twice
     return main_aux(argc, argv, envp, PANDA_INIT);
 }
 

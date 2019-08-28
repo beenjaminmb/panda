@@ -34,4 +34,6 @@ int coroutine_fn thread_pool_submit_co(ThreadPool *pool,
         ThreadPoolFunc *func, void *arg);
 void thread_pool_submit(ThreadPool *pool, ThreadPoolFunc *func, void *arg);
 
+void panda_stop_all_threads(void);
+
 #endif

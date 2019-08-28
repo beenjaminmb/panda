@@ -30,8 +30,10 @@ from cffi import FFI
 ffi = FFI()
 pyp = ffi
 
-# XXX  DEBUGGING
+# XXX WIP
+ffi.cdef("void panda_stop_all_threads();")
 ffi.cdef("void kill_rcu_thread();")
+ffi.cdef("void kill_tcg_thread();")
 
 ffi.cdef("typedef uint32_t target_ulong;")
 ffi.cdef(open("include/pthreadtypes.h").read())
