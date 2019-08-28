@@ -29,6 +29,10 @@ from cffi import FFI
 
 ffi = FFI()
 pyp = ffi
+
+# XXX  DEBUGGING
+ffi.cdef("void kill_rcu_thread();")
+
 ffi.cdef("typedef uint32_t target_ulong;")
 ffi.cdef(open("include/pthreadtypes.h").read())
 ffi.cdef(open("include/panda_x86_support.h").read())

@@ -1,40 +1,33 @@
 #!/usr/bin/env python3
-from pypanda import Panda
+from pypanda import Panda, blocking
 from time import sleep
 import pdb
 
+#pdb.set_trace()
+
 arch = "i386"
 
-print("\n\nFIRST TRY")
+@blocking
+def quit():
+    print("Stop")
+    panda.stop_run()
+
+# Single python thread exists prior to here
 panda = Panda(generic=arch, extra_args = "")
-print("Initialize")
+pdb.set_trace()
+
 panda.init()
-print("Initialized")
+panda.queue_async(quit)
+panda.run()
+
+print("UNLOAD")
 panda.unload()
-print("Unloaded")
-pdb.set_trace()
+print("UNLOADED")
 
-print("\n\nSECOND TRY")
-panda2 = Panda(generic=arch, extra_args = "")
-print("Initialize")
-panda2.init()
-print("Initialized")
-panda2.unload()
-print("Unloaded")
 
-"""
-print("\nINIT PANDA OBJ")
-with Panda(generic=arch, extra_args = "") as panda:
-    pdb.set_trace()
-    print("Have panda")
-    [print('.') and sleep(1) for _ in range(10)]
-
-print("\n\n--------------------------\n")
-pdb.set_trace()
-
-with Panda(generic=arch, extra_args = "") as panda2:
-    print("SECOND PANDA")
-    [print('.') and sleep(1) for _ in range(10)]
-"""
-
-print("Done")
+# Now lets do it again
+print("\n\n AGAIN\n\n")
+panda.init()
+panda.queue_async(quit)
+panda.run()
+panda.unload()

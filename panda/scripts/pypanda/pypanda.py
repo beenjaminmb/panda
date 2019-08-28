@@ -294,11 +294,18 @@ class Panda:
 	# /__init__
 
 	def unload(self):
-		print("calling dlclose on {}".format(self.libpanda))
-		ffi.dlclose(self.libpanda)
+		print("about to call dlclose on {}".format(self.libpanda))
+		# This appears to work
+		print("Kill RCU thread")
+		self.libpanda.kill_rcu_thread()
+
+		# DLCLOSE: Make sure we have no threads
+		r = ffi.dlclose(self.libpanda)
+		self.dlopen = False
+
 		self.running.clear()
 		self.init_run = False
-		self.libpanda = None
+		#self.libpanda = None
 
 	def _reload_libpanda_if_necessary(self):
 		# Reopen the libpanda dll after it closed (e.g. from monitor quit)
