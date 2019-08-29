@@ -1,6 +1,6 @@
 import threading
 import functools
-from queue import Queue
+from queue import Queue, Empty
 from time import sleep
 from colorama import Fore, Style
 
@@ -39,13 +39,22 @@ class AsyncThread:
 
     def run(self): # Run functions from queue
         #name = threading.get_ident()
-
-
         while self.running: # Note setting this to false will take some time
-            func = self.task_queue.get() # Implicit (blocking) wait
-            # Don't interact with guest if it isn't running 
-            self.panda_started.wait()
+            try: # Try to get an item repeatedly, but also check if we want to stop running
+                func = self.task_queue.get(True, 1) # Implicit (blocking) wait for 1s
+            except Empty:
+                continue
 
+            # Don't interact with guest if it isn't running
+            # Wait for self.panda_started, but also abort if running becomes false
+            while not self.panda_started and self.running:
+                try:
+                    self.panda_started.wait(True, 1)
+                except Empty:
+                    continue
+
+            if not self.running:
+                break
             try:
                 #print(f"{name} calling {func}")
                 func()
@@ -55,6 +64,7 @@ class AsyncThread:
                 raise
             finally:
                 self.task_queue.task_done()
+        print("AsyncThread Exit")
 
 
 if __name__ == '__main__':

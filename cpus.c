@@ -1347,7 +1347,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
     while (atomic_read(&tcg_running)) {
 
-//        printf ("going around big loop in qemu_tcg_cpu_thread_fn\n");
+        //printf ("going around big loop in qemu_tcg_cpu_thread_fn\n");
 
         if (!rr_replay_complete) {
             panda_callbacks_top_loop();
@@ -1390,7 +1390,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
             }
 
             if (panda_snap_requested) break;
-
+            if (!atomic_read(&tcg_running)) break;
 
         } /* while (cpu && !cpu->exit_request).. */
 

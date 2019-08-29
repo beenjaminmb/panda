@@ -295,9 +295,22 @@ class Panda:
 
 	def unload(self):
 		print("about to call dlclose on {}".format(self.libpanda))
-		# This appears to work
-		print("Kill RCU thread")
+		print("Pause threads...")
+
+		self.athread.stop()
+
+		# This stops a thread (Worker?)
+		self.libpanda.panda_stop_all_threads()
+
+		# This stops the RCU thread
 		self.libpanda.kill_rcu_thread()
+
+		# Kill the TCG thread
+		self.libpanda.kill_tcg_thread()
+
+		# Give threads a chance to die for 1s
+		from time import sleep
+		sleep(1)
 
 		# DLCLOSE: Make sure we have no threads
 		r = ffi.dlclose(self.libpanda)
