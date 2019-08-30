@@ -176,6 +176,7 @@ static struct rcu_head dummy;
 static struct rcu_head *head = &dummy, **tail = &dummy.next;
 static int rcu_call_count;
 static QemuEvent rcu_call_ready_event;
+static QemuEvent rcu_stopped;
 static int rcu_running;
 
 static void enqueue(struct rcu_head *node)
@@ -231,7 +232,10 @@ void kill_rcu_thread(void) {
     // Stop the RCU thread and unregister it
     atomic_dec(&rcu_running); // Decrement from 1 to 0
     qemu_event_set(&rcu_call_ready_event);
-    rcu_unregister_thread();
+    //rcu_unregister_thread();
+    //printf("Wait for thread to stop;...\n");
+    qemu_event_wait(&rcu_stopped); // Wait for thread to stop? WIP
+    //printf("it stopped!\n");
 }
 
 static void *call_rcu_thread(void *opaque)
@@ -289,6 +293,7 @@ static void *call_rcu_thread(void *opaque)
         }
     }
     printf("RCU THREAD EXIT\n");
+    qemu_event_set(&rcu_stopped);
     pthread_exit(0);
 }
 
@@ -329,6 +334,7 @@ static void rcu_init_complete(void)
      * must have been quiescent even after forking, just recreate it.
      */
     atomic_set(&rcu_running, 1);
+    qemu_event_reset(&rcu_stopped);
     qemu_thread_create(&thread, "call_rcu", call_rcu_thread,
                        NULL, QEMU_THREAD_DETACHED);
 

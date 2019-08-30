@@ -1,13 +1,19 @@
 all: dlopen
 
+#CFLAGS=-fno-gnu-unique
+CFLAGS=-g
+
 mylib.o: mylib.c
-	gcc -fPIC -c mylib.c -o mylib.o
+	gcc -fPIC $(CFLAGS) -c mylib.c -o mylib.o
 
 mylib.so: mylib.o
-	gcc -shared mylib.o -o mylib.so
+	gcc -shared $(CFLAGS) mylib.o -o mylib.so
 
 dlopen: mylib.so dlopen.c
-	gcc dlopen.c -Lmylib -o dlopen -ldl
+	gcc dlopen.c $(CFLAGS) -Lmylib -o dlopen -ldl
+
+panda_dlopen: panda_dlopen.c
+	gcc panda_dlopen.c $(CFLAGS) -Lmylib -o panda_dlopen -ldl
 
 clean:
 	rm -f mylib.o mylib.so dlopen

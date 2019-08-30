@@ -3132,8 +3132,8 @@ void main_panda_run(void) {
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 {
 
-    printf("XXX: main_aux not doing anything\n");
-    if (1) return 0;
+    //printf("XXX: main_aux not doing anything\n");
+    //if (1) return 0;
 
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
     if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
