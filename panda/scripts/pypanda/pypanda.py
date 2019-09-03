@@ -451,8 +451,24 @@ class Panda:
 
 		self.libpanda.panda_run()
 
+	def end_analysis(self): # From main thread, unregister all callbacks and request a shutdown
+		self.libpanda.panda_unload_plugins()
+		for cb in self.pcb_list:
+			if len(self.pcb_list[cb]):
+				self.disable_callback(cb)
+
+		# Plugins are unloaded, it's safe to kill threads (which violates assumptions about reasonable execution)
+		self.queue_async(self.stop_run)
+		self.unload() # Kill threads
+
 	@blocking
 	def stop_run(self): # From a blocking thread, tell main thread to break. Returns control flow in main thread
+		# Unload all plugins. C and then python
+		self.libpanda.panda_unload_plugins()
+		for cb in self.pcb_list:
+			if len(self.pcb_list[cb]):
+				self.disable_callback(cb)
+
 		self.libpanda.panda_break_main_loop()
 
 	def stop(self):
