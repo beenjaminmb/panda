@@ -1,9 +1,10 @@
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
-#include <dlfcn.h>
 #include <assert.h>
 #include <unistd.h>
 
+#include <dlfcn.h>
 
 #define PANDA "/home/andrew/git/panda/build/i386-softmmu/libpanda-i386.so"
 # define N_ARGS 10
@@ -37,9 +38,12 @@ int main(int argc, char **argv) {
 		void *handle2;
 		char *error;
 		void (*set_os_name)(char*);
+		void (*set_os_name2)(char*);
 		void (*panda_init)(int argc, char** argv, char** envp);
+		void (*panda_init2)(int argc, char** argv, char** envp);
 
-    handle1 = dlopen (PANDA, RTLD_NOW | RTLD_LOCAL); 
+    handle1 = dlopen (PANDA, RTLD_LAZY | RTLD_LOCAL); 
+    //handle1 = dlmopen (LM_ID_NEWLM, PANDA, RTLD_LAZY | RTLD_LOCAL); 
     if (!handle1) {fputs (dlerror(), stderr); exit(1);}
 
     // Setup library: os_name + panda_init with args
@@ -53,26 +57,30 @@ int main(int argc, char **argv) {
     panda_init(N_ARGS, pargv, NULL);
 
     cleanup(handle1);
+    sleep(2);
 
-    dlclose(handle1);
+    // Wait until our handle is evicted
+    do {}
+    while (dlopen(PANDA, RTLD_NOLOAD) != NULL);
+
 
     printf("\nSECOND INSTANCE\n\n");
-    sleep(5);
-    printf("\n LOAD NEW\n");
 
     // Now open NEW panda instance
-    handle2 = dlopen (PANDA, RTLD_NOW | RTLD_LOCAL); 
+    handle2 = dlopen (PANDA, RTLD_LAZY | RTLD_LOCAL); 
+    //handle2 = dlmopen (LM_ID_NEWLM, PANDA, RTLD_LAZY | RTLD_LOCAL); 
     if (!handle2) {fputs (dlerror(), stderr); exit(1);}
+    printf("DID DLOPEN\n");
 
     // Setup library: os_name + panda_init with args
-    set_os_name = dlsym(handle2, "panda_set_os_name");
-    if (!set_os_name) {fputs (dlerror(), stderr); exit(1);}
-    set_os_name("linux-32-debian:3.2.0-4-686-pae");
+    set_os_name2 = dlsym(handle2, "panda_set_os_name");
+    if (!set_os_name2) {fputs (dlerror(), stderr); exit(1);}
+    set_os_name2("linux-32-debian:3.2.0-4-686-pae");
 
-    panda_init = dlsym(handle2, "panda_init");
-    if (!panda_init) {fputs (dlerror(), stderr); exit(1);}
+    panda_init2 = dlsym(handle2, "panda_init");
+    if (!panda_init2) {fputs (dlerror(), stderr); exit(1);}
 
-    panda_init(N_ARGS, pargv, NULL);
+    panda_init2(N_ARGS, pargv, NULL);
 
     dlclose(handle2);
 }

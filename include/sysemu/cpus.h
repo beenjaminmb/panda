@@ -9,8 +9,6 @@ void pause_all_vcpus(void);
 void cpu_stop_current(void);
 void cpu_ticks_init(void);
 
-void kill_tcg_thread(void);
-
 void configure_icount(QemuOpts *opts, Error **errp);
 extern int use_icount;
 extern int icount_align_option;
@@ -28,7 +26,6 @@ void cpu_synchronize_all_post_reset(void);
 void cpu_synchronize_all_post_init(void);
 
 void qtest_clock_warp(int64_t dest);
-//void kill_all_vcpus(void);
 
 #ifndef CONFIG_USER_ONLY
 /* vl.c */

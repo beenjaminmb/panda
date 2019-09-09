@@ -56,15 +56,13 @@ class AsyncThread:
             if not self.running:
                 break
             try:
-                #print(f"{name} calling {func}")
+                print(f"Calling {func.__name__}")
                 func()
             except Exception as e:
-                #print(f"{name} exception {e!r}")
                 print("exception {}".format(e))
                 raise
             finally:
                 self.task_queue.task_done()
-        print("AsyncThread Exit")
 
 
 if __name__ == '__main__':

@@ -79,7 +79,7 @@ class Expect(object):
 
                     if b"\r\n" in sofar: # Serial will echo our command back, try to strip it out
                         resp = sofar.split(b"\r\n")
-                        if self.last_msg and resp[0].decode('utf8').replace(" \r", "").strip() == self.last_msg.decode('utf8').strip():
+                        if self.last_msg and resp[0].decode('utf8', 'ignore').replace(" \r", "").strip() == self.last_msg.decode('utf8', 'ignore').strip():
                             resp[:] = resp[1:] # drop last cmd
 
                         if resp[-1].decode('utf8') == expectation:
@@ -90,7 +90,7 @@ class Expect(object):
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
 
-                    return sofar.decode('utf8')
+                    return sofar.decode('utf8', 'ignore')
 
         if not self.running: # Aborted
             return None

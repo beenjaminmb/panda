@@ -28,8 +28,6 @@ from plog import PLogReader
 import pdb
 
 debug = True
-panda = None
-
 def progress(msg):
 	print(Fore.GREEN + '[pypanda.py] ' + Fore.RESET + Style.BRIGHT + msg +Style.RESET_ALL)
 
@@ -52,6 +50,7 @@ def blocking(func):
         assert (threading.current_thread() is not threading.main_thread()), "Blocking function run in main thread"
         return func(*args, **kwargs)
     wrapper.__blocking__ = True
+    wrapper.__name__ = func.__name__ + "(blocking)"
     return wrapper
 
 
@@ -121,16 +120,6 @@ def main_loop_wait_cb():
 	main_loop_wait_cbargs = []
 
 
-@pcb.pre_shutdown # XXX Put this in the class?
-def pre_shutdown_cb():
-	print("Qemu has requested to shut down. Unloading all plugins & writing pandalog")
-	global panda
-	if panda is not None:
-		# Cleanup and then clear mutexes. XXX maybe the mutexes are pointless?
-		panda.cleanup()
-		panda.running.clear()
-		panda.started.clear()
-
 class Panda:
 
 	"""
@@ -179,7 +168,15 @@ class Panda:
 		self.panda = pjoin(self.bindir, "qemu-system-%s" % self.arch)
 		if hasattr(self, 'libpanda'):
 			print("WARNING already have a libpanda at init")
+
+
+		print("\nDO DLOPEN")
+		print("PATH:", pjoin(self.bindir, "libpanda-%s.so" % self.arch))
 		self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
+		self.dlopen = True
+		print("FIN DLOPEN\n")
+
+		print("LIBPANDA", self.libpanda)
 		self.loaded_python = False
 
 		if self.os:
@@ -222,6 +219,7 @@ class Panda:
 		self.monitor_prompt = "(qemu)"
 		self.monitor_console = None
 		self.monitor_file = NamedTemporaryFile(prefix="pypanda_m").name
+		print("\nCREATAE MONITOR FILE: {}".format(self.monitor_file))
 		self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 		self.panda_args.extend(['-monitor', 'unix:{},server,nowait'.format(self.monitor_file)])
 
@@ -230,6 +228,7 @@ class Panda:
 		self.started = threading.Event()
 		self.athread = AsyncThread(self.started)
 
+		print(self.panda_args)
 		self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args]
 		cargs = ffi.new("char **")
 
@@ -266,6 +265,7 @@ class Panda:
 		#self.handle = None
 		self.handle = ffi.cast('void *', 0xdeadbeef)
 
+		"""
 		@pcb.asid_changed
 		def __asid_changed(cpustate, old_asid, new_asid):
 			print("PYASID", old_asid)
@@ -280,7 +280,7 @@ class Panda:
 				if current_name != cb.name and cb.enabled:
 					print("XXX disable {}".format(cb.name))
 			return 0
-
+		
 		@pcb.init
 		def __panda_loaded(newhandle): # Local function with a reference to this instance's self.handle
 			self.handle = newhandle
@@ -289,13 +289,27 @@ class Panda:
 
 		# Register init which sets up asid_changed as well
 		self.load_python_plugin(__panda_loaded, "__internal_python_init")
-
-
+		"""
 	# /__init__
 
+	"""
+	# Callback to run before panda shuts down of its on volition
+	@self.callback.pre_shutdown
+	def pre_shutdown_cb():
+		# Cleanup and then clear mutexes. XXX maybe the mutexes are pointless?
+		self.cleanup()
+		self.running.clear()
+		self.started.clear()
+	"""
+
 	def unload(self):
-		print("about to call dlclose on {}".format(self.libpanda))
-		print("Pause threads...")
+# Simple main_aux creates 3 threads: select, syscall, do_futex_wait.c
+
+# Threads hanging when we really run after stop_all:
+# _lll_lock_wait from tcg_cpu thread cpus.c qemu_tcg_cpu_thread_fn -> qemu_cond_wait
+
+		#print("about to call dlclose on {}".format(self.libpanda))
+		print("Pause TCG threads...")
 
 		self.athread.stop()
 
@@ -312,57 +326,37 @@ class Panda:
 		from time import sleep
 		sleep(1)
 
-		# DLCLOSE: Make sure we have no threads
-		r = ffi.dlclose(self.libpanda)
-		self.dlopen = False
-
 		self.running.clear()
 		self.init_run = False
-		#self.libpanda = None
-
-	def _reload_libpanda_if_necessary(self):
-		# Reopen the libpanda dll after it closed (e.g. from monitor quit)
-		# XXX: Make this interface more clean
-		#raise NotImplemented("Panda has already exited. Can't cleanly restart library.")
-		# XXX: Cffi won't let us reopen a new libpanda to do the replay. We should fix this someday
-
-		if not hasattr(self, "libpanda") or self.libpanda is None:
-			# Initialize libpanda as necessary
-			print("Reloading libpanda handle")
-
-			self.libpanda = ffi.dlopen(pjoin(self.bindir, "libpanda-%s.so" % self.arch))
-			self.running.clear()
-
-	def shutdown(self): # Cleanup panda object. XXX can't then re-initialize new python
-		del self.libpanda
 
 	def init(self):
-		self._reload_libpanda_if_necessary()
 		self.init_run = True
 		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 
+		if not self.athread.running:
+			self.athread = AsyncThread(self.started)
+
 		# Connect to serial socket and setup serial_console if necessary
 		if not self.serial_console:
+			print("Connect to serial")
 			self.serial_socket.connect(self.serial_file)
 			self.serial_console = Expect(self.serial_socket, expectation=self.serial_prompt, quiet=True,
 										consume_first=False)
 
 		# Connect to monitor socket and setup monitor_console if necessary
 		if not self.monitor_console:
+			print("Connect to monitor")
+			#assert(isfile(self.monitor_file)), "Missing monitor file {}".format(self.monitor_file)
 			self.monitor_socket.connect(self.monitor_file)
 			self.monitor_console = Expect(self.monitor_socket, expectation=self.monitor_prompt, quiet=True,
 										consume_first=True)
-		# Register main_loop_wait_callback
+		# Register main_loop_wait_callback # XXX Are we using this?
+		"""
 		self.register_callback(self.handle,
 				self.callback.main_loop_wait, main_loop_wait_cb)
-
-
+		"""
 		# Register callback to cleanup when qemu shuts down
-		global panda
-		panda = self
-		self.register_callback(self.handle,
-				self.callback.pre_shutdown, pre_shutdown_cb)
-
+		#self.register_callback(self.handle, self.callback.pre_shutdown, pre_shutdown_cb)
 	# fnargs is a pair (fn, args)
 	# fn is a function we want to run
 	# args is args (an array)
@@ -437,7 +431,6 @@ class Panda:
 	def run(self):
 		if debug:
 			progress ("Running")
-		self._reload_libpanda_if_necessary()
 		if not self.init_run:
 			self.init()
 
@@ -458,11 +451,11 @@ class Panda:
 				self.disable_callback(cb)
 
 		# Plugins are unloaded, it's safe to kill threads (which violates assumptions about reasonable execution)
-		self.queue_async(self.stop_run)
-		self.unload() # Kill threads
+		#self.queue_async(self.stop_run)
+		#self.unload() # Kill threads
 
 	@blocking
-	def stop_run(self): # From a blocking thread, tell main thread to break. Returns control flow in main thread
+	def stop_run(self): # From a blocking thread, request vl.c loop to break. Returns control flow in main thread
 		# Unload all plugins. C and then python
 		self.libpanda.panda_unload_plugins()
 		for cb in self.pcb_list:
@@ -501,22 +494,17 @@ class Panda:
 		self.panda_args_ffi = [ffi.new("char[]", bytes(str(i),"utf-8")) for i in self.panda_args+["-replay {}".format(replay_name)]]
 		self.len_cargs = ffi.cast("int", len(self.panda_args_ffi))
 
+		ffi_replay_name = ffi.new("char[]", bytes(replay_name,"utf-8"))
+		self.libpanda.set_replay_name(ffi_replay_name)
+
 		self.libpanda.panda_init(self.len_cargs, self.panda_args_ffi, self.cenvp)
 
 	def begin_replay(self, replaypfx):
 		if debug:
 			progress ("Replaying %s" % replaypfx)
 
-		if not hasattr(self, "libpanda"): # Initialize libpanda as necessary
-			print("Reloading libpanda handle")
-			self._reload_libpanda()
-
 		charptr = ffi.new("char[]",bytes(replaypfx,"utf-8"))
 		self.libpanda.panda_replay(charptr)
-
-	def reset_panda(self):
-		self.libpanda.qemu_system_reset(0);
-
 
 	def load_plugin(self, name, args={}):
 		if debug:
@@ -893,6 +881,8 @@ class Panda:
 		pass
 
 	def queue_async(self, f):
+		if not self.init_run:
+			self.init()
 		self.athread.queue(f)
 
 	# XXX: Do not call any of the following from the main thread- they depend on the CPU loop running

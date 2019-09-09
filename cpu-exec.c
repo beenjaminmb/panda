@@ -49,6 +49,8 @@ int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
 
+extern void panda_break_main_loop(void);
+
 extern bool panda_exit_loop;
 bool panda_stopped;
 extern bool panda_revert_requested;
@@ -849,8 +851,8 @@ int cpu_exec(CPUState *cpu)
             if (rr_mode == RR_REPLAY && rr_replay_finished()) {
                 rr_do_end_replay(0);
                 qemu_cpu_kick(cpu);
-                //panda_exit_loop = true;
-                printf("XXX: not requesitng panda_exit loop\n");
+                panda_exit_loop = true; // XXX: Do not break CPU exec loop ?
+                //panda_break_main_loop();
                 break;
             }
 

@@ -1,33 +1,28 @@
-	#include <stdlib.h>
-	#include <stdio.h>
-	#include <dlfcn.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <dlfcn.h>
+#include <assert.h>
 
 	int main(int argc, char **argv) {
-			void *handle;
-			int (*foo)(int);
+			void *handle1;
+			void *handle2;
+			void (*init1)(void);
+			void (*init2)(void);
 			char *error;
+      int* foo;
 
-      puts("Opening...\t");
-			handle = dlopen ("/home/andrew/git/panda/dlopen_test/mylib.so", RTLD_LAZY);
-			if (!handle) {
-					fputs (dlerror(), stderr);
-					exit(1);
-			}
-      puts("Opened\n");
+      handle1 = dlopen ("/home/andrew/git/panda/dlopen_test/mylib.so", RTLD_NOW | RTLD_LOCAL); 
+      if (!handle1) {fputs (dlerror(), stderr); exit(1);}
+      init1 = dlsym(handle1, "init");
+      foo = dlsym(handle1, "init_count");
+      printf("Init1 is at %p, init_count at %p\n", &init1, &foo);
+      init1();
+      dlclose(handle1);
 
-      // Get handle to foo
-			foo = dlsym(handle, "foo");
-			if ((error = dlerror()) != NULL)  {
-					fputs(error, stderr);
-					exit(1);
-			}
-      puts("got foo handle\n");
-
-      puts("Calling foo...\t");
-			printf ("%d\t", (*foo)(1));
-      puts("Done with foo\n");
-
-      puts("Closing...\t");
-			dlclose(handle);
-      puts("Closed\n");
+      handle2 = dlopen ("/home/andrew/git/panda/dlopen_test/mylib.so", RTLD_NOW | RTLD_LOCAL); 
+      if (!handle2) {fputs (dlerror(), stderr); exit(1);}
+      init2 = dlsym(handle2, "init");
+      printf("Init2 is at %p, init_count at %p\n", &init2, &foo);
+      init2();
+      dlclose(handle2);
 	}

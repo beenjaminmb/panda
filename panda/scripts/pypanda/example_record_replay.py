@@ -29,4 +29,7 @@ def asid_changed(cpustate,old_asid, new_asid):
 
 panda.load_python_plugin(init, "example_record_replay")
 panda.begin_replay(replay_file)
+
+import pdb
+pdb.set_trace()
 panda.run()

@@ -28,7 +28,7 @@ int save_vmstate_nomon(const char *name);
 int init_count = 0;
 // call main_aux and run everything up to and including panda_callbacks_after_machine_init
 int panda_init(int argc, char **argv, char **envp) {
-    assert(init_count++ == 0); // Can't initialize twice
+    //assert(init_count++ == 0); // Can't initialize twice
     return main_aux(argc, argv, envp, PANDA_INIT);
 }
 

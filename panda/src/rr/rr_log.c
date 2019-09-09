@@ -129,25 +129,10 @@ RR_log_entry* rr_get_queue_head(void) { return rr_queue_head; }
 // 2) The only thing in the queue is RR_END_OF_LOG
 uint8_t rr_replay_finished(void)
 {
-    if (rr_log_is_empty()) { // Mostly false because of instr_count
-        if(rr_queue_head->header.kind == RR_END_OF_LOG
-            && rr_get_guest_instr_count() >=
-               rr_queue_head->header.prog_point.guest_instr_count) {
-          printf("REPLAY FINISHED\n");
-          return true;
-        }else{
-          /*printf("Log empty but queue head %d / instr cnt %d\n", rr_queue_head->header.kind == RR_END_OF_LOG,
-             rr_get_guest_instr_count() >= rr_queue_head->header.prog_point.guest_instr_count);*/
-          return false;
-        }
-    }
-    return false;
-    /*
     return rr_log_is_empty()
         && rr_queue_head->header.kind == RR_END_OF_LOG
         && rr_get_guest_instr_count() >=
                rr_queue_head->header.prog_point.guest_instr_count;
-               */
 }
 
 // mz "performance" counters - basically, how much of the log is taken up by
@@ -1496,6 +1481,8 @@ extern void panda_cleanup(void);
 // file_name_full should be full path to the record/replay log
 int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 {
+    // STOP EXECUTION if guest is running
+    vm_stop(RUN_STATE_PAUSED);
 #ifdef CONFIG_SOFTMMU
     char name_buf[1024];
     rr_replay_complete = false;
@@ -1559,11 +1546,11 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     rr_fill_queue();
 
     printf("START with instr_cnt %lu guest insn: %lu\n", rr_get_guest_instr_count(), rr_nondet_log->last_prog_point.guest_instr_count);
+    vm_start();
 
     return 0; // snapshot_ret;
 #endif
 }
-
 // mz XXX what about early replay termination? Can we save state and resume
 // later?
 void rr_do_end_replay(int is_error)
@@ -1616,7 +1603,7 @@ void rr_do_end_replay(int is_error)
     // close logs
     rr_destroy_log();
     // turn off replay
-    //rr_mode = RR_OFF;
+    rr_mode = RR_OFF;
 
     rr_replay_complete = true;
     
@@ -1627,9 +1614,8 @@ void rr_do_end_replay(int is_error)
     } else {
         // XXX add callback here - finished_recording. Then don't request shutdown
         printf("XXX NOT ACTUALLY SHUTTING DOWN\n\tRESET QEMU STATE and BREAK MAIN LOOP\n");
-        qemu_system_reset(VMRESET_SILENT);
-        panda_break_main_loop();
-        //qemu_system_shutdown_request();
+        //qemu_system_reset(VMRESET_SILENT);
+        panda_break_main_loop();  /// XXX: This works and we can't do panda_exit_loop here because we want the CPU to continue
     }
 #endif // CONFIG_SOFTMMU
 }

@@ -1,7 +1,7 @@
 all: dlopen
 
-#CFLAGS=-fno-gnu-unique
-CFLAGS=-g
+CFLAGS=-fno-gnu-unique
+CFLAGS+=-g
 
 mylib.o: mylib.c
 	gcc -fPIC $(CFLAGS) -c mylib.c -o mylib.o

@@ -53,7 +53,6 @@
 
 #include "panda/rr/rr_log.h"
 
-
 #ifndef _WIN32
 #include "qemu/compatfd.h"
 #endif
@@ -1347,7 +1346,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
     while (atomic_read(&tcg_running)) {
 
-        //printf ("going around big loop in qemu_tcg_cpu_thread_fn\n");
+//      printf ("going around big loop in qemu_tcg_cpu_thread_fn\n");
 
         if (!rr_replay_complete) {
             panda_callbacks_top_loop();
@@ -1412,7 +1411,6 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 //    printf ("exiting big loop in qemu_tcg_cpu_thread_fn\n");
 
 
-    printf("TCG CPU thread shutting down\n");
     return NULL;
 }
 
@@ -1553,6 +1551,7 @@ void qemu_mutex_unlock_iothread(void)
 }
 
 
+void kill_tcg_thread(void);
 void kill_tcg_thread(void) {
   atomic_set(&tcg_running, 0);
 
@@ -1573,27 +1572,6 @@ static bool all_vcpus_paused(void)
 
     return true;
 }
-
-/*
-void kill_all_vcpus(void) {
-    CPUState *cpu;
-
-    //qemu_system_shutdown_request();
-
-    // Get iothread_lock, kill thread
-    //synchronize_rcu();
-    //qemu_mutex_unlock_iothread(); // YOLO? - Unlock the thread so it can die
-    //rcu_unregister_thread();
-
-    // Unregister rcu thread
-    //qemu_mutex_lock_iothread(); // YOLO? - Unlock the thread so it can die
-    // XXX  TODO: kill iothread?
-
-    CPU_FOREACH(cpu) {
-      cpu_remove(cpu);
-    }
-}
-*/
 
 void pause_all_vcpus(void)
 {
@@ -1659,11 +1637,11 @@ void cpu_remove_sync(CPUState *cpu)
 /* For temporary buffers for forming a name */
 #define VCPU_THREAD_NAME_SIZE 16
 
+static QemuThread *tcg_cpu_thread; // XXX: Moved out of fn
+static QemuCond *tcg_halt_cond; // XXX: Moved
 static void qemu_tcg_init_vcpu(CPUState *cpu)
 {
     char thread_name[VCPU_THREAD_NAME_SIZE];
-    static QemuCond *tcg_halt_cond;
-    static QemuThread *tcg_cpu_thread;
 
     /* share a single thread for all cpus with TCG */
     if (!tcg_cpu_thread) {

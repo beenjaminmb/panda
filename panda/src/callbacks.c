@@ -67,6 +67,8 @@ bool panda_help_wanted = false;
 bool panda_plugin_load_failed = false;
 bool panda_abort_requested = false;
 
+// When panda_exit_loop is enabled, we will break out of the cpu-exec.c loop AND the vl.c loop
+// Note this differes from calling panda_break_main_loop() which only makes the vl.c loop exit
 bool panda_exit_loop = false;
 
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
