@@ -9,7 +9,7 @@ arch = "i386" if len(argv) <= 1 else argv[1]
 panda = Panda(generic=arch)
 
 block_count = 0
-@panda.cb_after_block_exec(name="before")
+@panda.cb_before_block_exec(name="before")
 def before_block_execute(cpustate, transblock):
     global block_count
 
@@ -18,8 +18,10 @@ def before_block_execute(cpustate, transblock):
         panda.load_plugin("coverage")
 
     if block_count == 100:
+        print("\n\n")
         print("Saw 100 BBs. End analysis")
         panda.end_analysis()
+        print("\n\n")
 
     assert(block_count <= 100), "Callback run after call to end analysis"
 

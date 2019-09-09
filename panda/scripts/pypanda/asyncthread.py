@@ -27,7 +27,6 @@ class AsyncThread:
         self.athread.start()
 
     def stop(self):
-        # XXX: This doesn't work until a command finishes
         self.running = False
 
     def queue(self, func): # Queue a function to be run soon. Must be @blocking
@@ -57,6 +56,7 @@ class AsyncThread:
                 break
             try:
                 print(f"Calling {func.__name__}")
+                # XXX: If running become false while func is running we need a way to kill it
                 func()
             except Exception as e:
                 print("exception {}".format(e))
@@ -70,20 +70,25 @@ if __name__ == '__main__':
     # Should output t0 three times, then maybe t1 three times, then shutdown
     from time import sleep
 
-    a = AsyncThread()
+    started = threading.Event()
+    a = AsyncThread(started)
 
     def afunc():
         for x in range(3):
-            print("afunc: t{}")
-            sleep(10)
+            print("afunc: t{}".format(x))
+            sleep(1)
+
+    afunc.__blocking__ = "placeholder" # Hack to pretend it's decorated
 
     print("\nQueuing up functions...")
     a.queue(afunc)
     a.queue(afunc)
     a.queue(afunc)
 
-    print("\nAll queued. Wait 1s")
+    print("\nAll queued. Wait 5s")
     sleep(5)
 
     print("\nBegin shutdown")
     a.stop()
+
+    # Expected output: t0, t1, t2, t0, t1

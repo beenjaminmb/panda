@@ -36,13 +36,12 @@ panda.queue_async(record_nondet) # Take a recording
 panda.run()
 print("======== END RECORDING ========")
 
-in_replay = True
 print("Observed {} bbs".format(len(orig_blocks)))
 
 print("======== RUN REPLAY ========")
-panda.begin_replay(recording_name) # Set up everything to do the replay
 print("Wait a moment for replay to start...")
-panda.run() # Now actually run it
+in_replay = True
+panda.run_replay(recording_name) # Load and run the replay
 print("======== FINISH REPLAY ========")
 
 orig_block_c = len(orig_blocks)
@@ -50,7 +49,7 @@ repl_block_c = len(replay_blocks)
 rep_in_orig = sum([1 if x in orig_blocks else 0 for x in replay_blocks])
 orig_in_rep = sum([1 if x in replay_blocks else 0 for x in orig_blocks])
 
-print(f"There are {orig_block_c} blocks in original execution.\n{repl_block_c} blocks captured in recording.")
+print(f"{orig_block_c} blocks are in original execution.\n{repl_block_c} blocks captured in recording.")
 print(f"{rep_in_orig} of the recorded blocks are in the original execution.\n{orig_in_rep} of the original blocks are in replay")
 
 

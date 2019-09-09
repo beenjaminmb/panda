@@ -1346,7 +1346,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
     while (atomic_read(&tcg_running)) {
 
-//      printf ("going around big loop in qemu_tcg_cpu_thread_fn\n");
+//        printf ("going around big loop in qemu_tcg_cpu_thread_fn\n");
 
         if (!rr_replay_complete) {
             panda_callbacks_top_loop();
@@ -1637,11 +1637,11 @@ void cpu_remove_sync(CPUState *cpu)
 /* For temporary buffers for forming a name */
 #define VCPU_THREAD_NAME_SIZE 16
 
-static QemuThread *tcg_cpu_thread; // XXX: Moved out of fn
-static QemuCond *tcg_halt_cond; // XXX: Moved
 static void qemu_tcg_init_vcpu(CPUState *cpu)
 {
     char thread_name[VCPU_THREAD_NAME_SIZE];
+    static QemuCond *tcg_halt_cond;
+    static QemuThread *tcg_cpu_thread;
 
     /* share a single thread for all cpus with TCG */
     if (!tcg_cpu_thread) {

@@ -73,7 +73,7 @@ typedef enum panda_cb_type {
     PANDA_CB_DURING_MACHINE_INIT, //for rehosting machine init
 
     PANDA_CB_MAIN_LOOP_WAIT,       // you can run monitor cmds here (bc you are in right thread)
-    PANDA_CB_PRE_SHUTDOWN,       // you can run monitor cmds here (bc you are in right thread)
+    PANDA_CB_PRE_SHUTDOWN,         // Right before qemu shuts down
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -873,8 +873,9 @@ int panda_snap(char *snapshot_name);
 int panda_replay(char *replay_name);
 int panda_finish(void);
 
-// Defined in vl.c
+// from vl.c
 void panda_break_main_loop(void);
+//void set_replay_name(char *name);
 
 void panda_set_qemu_path(char* filepath);
 

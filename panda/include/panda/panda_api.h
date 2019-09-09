@@ -39,9 +39,7 @@ int panda_snap(char *snapshot_name);
 int panda_replay(char *replay_name);
 int panda_finish(void);
 
-// Defined in vl.c
 void panda_break_main_loop(void);
-
 void panda_set_qemu_path(char* filepath);
 
 int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args);

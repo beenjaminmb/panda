@@ -32,7 +32,7 @@ class Expect(object):
         self.running = True
         self.expectation = expectation
 
-        # If cosuned_first is false, we'll consume a message before anything else. Requires self.expectation to be set
+        # If consumed_first is false, we'll consume a message before anything else. Requires self.expectation to be set
         self.consumed_first = True
         if consume_first:
             self.consumed_first = False

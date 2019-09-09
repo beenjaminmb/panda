@@ -35,6 +35,7 @@ int panda_init(int argc, char **argv, char **envp) {
 extern void pandalog_cc_init_write(const char * fname);
 extern int panda_in_main_loop;
 extern bool panda_exit_loop;
+extern bool panda_pause_requested;
 extern bool panda_stopped;
 
 extern bool panda_revert_requested;
@@ -62,8 +63,13 @@ int panda_finish(void) {
 }
 
 void panda_exit_emul_loop(void) {
-//    printf ("panda_api: exit_emul_loop\n");
+    // Exit both the vl.c and the cpu-exec.c loops
     panda_exit_loop = true;
+}
+
+void panda_break_main_loop(void) {
+    // Exit the vl.c loop but not the cpu-exec.c loop
+    panda_pause_requested = true;
 }
 
 void panda_start_pandalog(const char * name) {
@@ -137,6 +143,7 @@ int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args) 
 }
 
 
+// panda_cb is defined in panda_callback_list.h
 void panda_register_callback_helper(void *plugin, panda_cb_type type, panda_cb* cb) {
 	panda_cb cb_copy;
 	memcpy(&cb_copy,cb, sizeof(panda_cb));

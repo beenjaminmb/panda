@@ -30,13 +30,6 @@ from cffi import FFI
 ffi = FFI()
 pyp = ffi
 
-# XXX WIP
-ffi.cdef("void panda_stop_all_threads();")
-ffi.cdef("void kill_rcu_thread();")
-ffi.cdef("void kill_tcg_thread();")
-ffi.cdef("void set_replay_name(char*);")
-ffi.cdef("void kick_tcg();")
-
 ffi.cdef("typedef uint32_t target_ulong;")
 ffi.cdef(open("include/pthreadtypes.h").read())
 ffi.cdef(open("include/panda_x86_support.h").read())

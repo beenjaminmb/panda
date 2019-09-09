@@ -73,10 +73,9 @@ volatile sig_atomic_t rr_skipped_callsite_location = 0;
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
 
-// Defined in vl.c
-extern void panda_break_main_loop(void);
-
 bool rr_replay_complete = false;
+
+extern bool panda_pause_requested;
 
 #define RR_RECORD_FROM_REQUEST 2
 #define RR_RECORD_REQUEST 1
@@ -1615,7 +1614,9 @@ void rr_do_end_replay(int is_error)
         // XXX add callback here - finished_recording. Then don't request shutdown
         printf("XXX NOT ACTUALLY SHUTTING DOWN\n\tRESET QEMU STATE and BREAK MAIN LOOP\n");
         //qemu_system_reset(VMRESET_SILENT);
-        panda_break_main_loop();  /// XXX: This works and we can't do panda_exit_loop here because we want the CPU to continue
+        // XXX: This works and we can't set panda_exit_loop here because we want the CPU to continue running
+        panda_pause_requested = true;
+        // XXX: pause_vm?
     }
 #endif // CONFIG_SOFTMMU
 }

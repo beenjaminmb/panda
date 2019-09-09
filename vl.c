@@ -43,22 +43,6 @@
 #include <unistd.h>
 #include <glib.h>
 
-// TESTING
-static int init_count2 = 0;
-
-#include <stdio.h>
-static void __attribute__((constructor)) con(void);
-static void __attribute__((destructor)) des(void);
-
-static int const_count=0;
-static void __attribute__((constructor)) con(void) {
-      printf("QEMU CONSTRUCTOR: %d\n", const_count++);
-}
-
-static void __attribute__((destructor)) des(void) {
-      puts("QEMU DESTRUCTOR\n");
-}
-
 #ifdef CONFIG_SECCOMP
 #include "sysemu/seccomp.h"
 #endif
@@ -172,7 +156,12 @@ extern void panda_callbacks_pre_shutdown(void);
 extern void pandalog_cc_init_write(const char * fname);
 int pandalog = 0;
 int panda_in_main_loop = 0;
+
 extern bool panda_abort_requested;
+bool panda_snap_requested = false;
+bool panda_revert_requested = false;
+char *panda_snap_name = NULL;
+const char* replay_name = NULL;
 
 #include "panda/debug.h"
 #include "panda/rr/rr_log_all.h"
@@ -249,10 +238,6 @@ int only_migratable; /* turn it off unless user states otherwise */
 
 int icount_align_option;
 
-
-bool panda_snap_requested = false;
-bool panda_revert_requested = false;
-char *panda_snap_name = NULL;
 int save_vmstate_nomon(char *name);
 
 
@@ -285,7 +270,7 @@ static int default_sdcard = 1;
 static int default_vga = 1;
 static int default_net = 1;
 
-int panda_pause_requested = 0;
+bool panda_pause_requested = 0;
 
 static struct {
     const char *driver;
@@ -1912,11 +1897,6 @@ void qemu_system_debug_request(void)
 }
 
 extern bool panda_exit_loop;
-void panda_break_main_loop(void);
-void panda_break_main_loop(void) {
-  panda_pause_requested = 1; // XXX: In at least one call this must differ from panda_exit_loop
-  //panda_exit_loop = 1;
-}
 
 static bool main_loop_should_exit(void)
 {
@@ -2023,7 +2003,6 @@ void main_loop(void)
                 printf("Failed to start replay\n");
                 exit(1);
             } else { // we have to unblock signals, so we can't just continue on failure
-              printf("STARTED REPLAY\n");
                 qemu_rr_quit_timers();
                 rr_replay_requested = 0;
             }
@@ -2033,14 +2012,12 @@ void main_loop(void)
 
         //mz 05.2012 We have the global mutex here, so this should be OK.
         if (rr_end_record_requested && rr_in_record()) {
-              printf("END RECORD 1\n");
             rr_do_end_record();
             rr_reset_state(first_cpu);
             rr_end_record_requested = 0;
             vm_start();
         }
         if (rr_end_replay_requested && rr_in_replay()) {
-              printf("END RECORD 2\n");
             //mz restore timers
             qemu_clock_run_all_timers();
             //mz FIXME this is used in the monitor for do_stop()??
@@ -3131,24 +3108,15 @@ void main_panda_run(void) {
     main_loop();
     panda_in_main_loop = 0;
 }
-const char* replay_name = NULL;
 
-void set_replay_name(char *name); // XXX: WIP
 void set_replay_name(char *name) {
-  replay_name = name;
+    replay_name = name;
 }
 
 int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 {
-
-
-    //printf("XXX: main_aux not doing anything\n");
-    //if (1) return 0;
-
     if (pmm == PANDA_RUN)    goto PANDA_MAIN_RUN;
     if (pmm == PANDA_FINISH) goto PANDA_MAIN_FINISH;
-
-    init_count2++;
 
     int i;
     int snapshot, linux_boot;
@@ -3202,15 +3170,12 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
     const char * panda_plugin_names[64] = {};
     int nb_panda_plugins = 0;
 
-    printf("INIT_COUNT is %d\n", init_count2);
-
     module_call_init(MODULE_INIT_TRACE);
 
     qemu_init_cpu_list();
     qemu_init_cpu_loop();
     qemu_mutex_lock_iothread();
 
-  if (init_count2 <= 1) { // XXX
     atexit(qemu_run_exit_notifiers);
     error_set_progname(argv[0]);
     qemu_init_exec_dir(argv[0]);
@@ -5068,32 +5033,6 @@ int main_aux(int argc, char **argv, char **envp, PandaMainMode pmm)
 
     // Call PANDA post-machine init hook
     panda_callbacks_after_machine_init();
-    //printf("hit 2\n");
-    
-    } else { // end if (init_count2 <=1)
-      // XXX WIP
-      printf("REPLAY INIT START\n");
-      register_global_state();
-
-      assert(replay_name != NULL);
-      // rr: check for begin/end record/replay
-      sigset_t blockset, oldset;
-
-      printf("START?"); // Moved to before do_begin_replay due to deadlock?
-      vm_start();
-
-      //block signals
-      sigprocmask(SIG_BLOCK, &blockset, &oldset);
-      if (0 != rr_do_begin_replay(replay_name, first_cpu)){
-          printf("Failed to start replay\n");
-          exit(1);
-      }
-      // rr: qemu_quit_timers() defined by PANDA team to stop timers
-      qemu_rr_quit_timers();
-
-      //unblock signals
-      sigprocmask(SIG_SETMASK, &oldset, NULL);
-    }
 
     if (pmm == PANDA_INIT) return 0;
 
