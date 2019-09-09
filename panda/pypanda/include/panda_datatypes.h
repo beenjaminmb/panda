@@ -7,7 +7,7 @@
 
 
 // -----------------------------------
-// Pull number 1 from ../../include/panda/panda_callback_list.h
+// Pull number 1 from ../include/panda/panda_callback_list.h
 
 
 // Just the enum defining callback numbering
@@ -73,7 +73,7 @@ typedef enum panda_cb_type {
     PANDA_CB_DURING_MACHINE_INIT, //for rehosting machine init
 
     PANDA_CB_MAIN_LOOP_WAIT,       // you can run monitor cmds here (bc you are in right thread)
-    PANDA_CB_PRE_SHUTDOWN,         // Right before qemu shuts down
+    PANDA_CB_PRE_SHUTDOWN,       // you can run monitor cmds here (bc you are in right thread)
 
     PANDA_CB_LAST
 } panda_cb_type;
@@ -717,7 +717,7 @@ typedef union panda_cb {
 
 
 // -----------------------------------
-// Pull number 2 from ../../include/panda/panda_plugin_mgmt.h
+// Pull number 2 from ../include/panda/panda_plugin_mgmt.h
 
 //  Manage plugins (load, enable, disable, etc).
 //  and callbacks (regster, unregister, etc) .
@@ -770,7 +770,7 @@ panda_cb_list* panda_cb_list_next(panda_cb_list* plist);
 
 
 // -----------------------------------
-// Pull number 3 from ../../include/panda/panda_args.h
+// Pull number 3 from ../include/panda/panda_args.h
 
 // Fns and structs to do with panda arg parsing 
 
@@ -833,7 +833,7 @@ extern int panda_argc;
 
 
 // -----------------------------------
-// Pull number 4 from ../../include/panda/panda_api.h
+// Pull number 4 from ../include/panda/panda_api.h
 
 // Functions considered part of the panda api that come from
 // panda_api.c. Also some from common.c. Note that, while common.c has
@@ -873,10 +873,7 @@ int panda_snap(char *snapshot_name);
 int panda_replay(char *replay_name);
 int panda_finish(void);
 
-// from vl.c
 void panda_break_main_loop(void);
-//void set_replay_name(char *name);
-
 void panda_set_qemu_path(char* filepath);
 
 int panda_init_plugin(char *plugin_name, char **plugin_args, uint32_t num_args);
@@ -914,7 +911,7 @@ void panda_monitor_run_async(char* buf);
 
 
 // -----------------------------------
-// Pull number 5 from ../../include/panda/panda_os.h
+// Pull number 5 from ../include/panda/panda_os.h
 
 // this stuff is defined / used in common.c
 
@@ -935,7 +932,7 @@ typedef target_ulong target_ptr_t;
 
 
 // -----------------------------------
-// Pull number 6 from ../../include/panda/panda_common.h
+// Pull number 6 from ../include/panda/panda_common.h
 
 
 void panda_cleanup(void);

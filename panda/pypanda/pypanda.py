@@ -33,7 +33,7 @@ def progress(msg):
 
 
 # location of panda build dir
-panda_build = realpath(pjoin(abspath(__file__), "../../../../build"))
+panda_build = realpath(pjoin(abspath(__file__), "../../../build"))
 home = getenv("HOME")
 
 def call_with_opt_arg(f, a):
