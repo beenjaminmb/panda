@@ -762,6 +762,7 @@ void panda_disable_plugin(void *plugin);
 
 // callback mgmt
 void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
+bool panda_is_callback_enabled(void *plugin, panda_cb_type type, panda_cb cb);
 void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void panda_unregister_callbacks(void *plugin);
@@ -907,6 +908,17 @@ char* panda_monitor_run(char* buf);
 // Pass a message via the panda monitor. Create monitor if necessary'
 // Does not return
 void panda_monitor_run_async(char* buf);
+
+
+// turns on taint
+void panda_taint_enable(void) ;
+
+// label this register 
+void panda_taint_label_reg(uint32_t reg_num, uint32_t label) ;
+
+// returns true iff any byte in this register is tainted
+bool panda_taint_check_reg(uint32_t reg_num, uint32_t size) ;
+
 
 
 
