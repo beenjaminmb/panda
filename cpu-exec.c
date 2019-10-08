@@ -721,6 +721,7 @@ __attribute__((always_inline))
 #endif
 }
 
+#define MAX_LOOPS 100
 static void detect_infinite_loops(void) {
     if (!rr_in_replay()) return;
 
@@ -728,9 +729,9 @@ static void detect_infinite_loops(void) {
     static unsigned loop_tries = 0;
     if (last_instr_count == rr_get_guest_instr_count()) {
         loop_tries++;
-        if (loop_tries > 20) {
-            fprintf(stderr, "rr_guest_instr_count = %lu\n",
-                    rr_get_guest_instr_count());
+        if (loop_tries > MAX_LOOPS) {
+            fprintf(stderr, "rr_guest_instr_count = %lu, loop_tries=%lu\n",
+                    rr_get_guest_instr_count(), loop_tries);
             assert(false);
         }
     } else {
